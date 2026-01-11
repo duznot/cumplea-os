@@ -6,6 +6,13 @@ document.addEventListener('DOMContentLoaded', function(){
   const letter = document.getElementById('letter');
   const flap = document.getElementById('flap');
   const photosContainer = document.getElementById('photos');
+  // Elemento de audio de fondo (insertado en index.html)
+  const bgAudio = document.getElementById('bgMusic');
+  // Audio settings
+  const AUDIO_TARGET_VOLUME = 0.35; // volumen objetivo suave
+  const AUDIO_FADE_MS = 3000; // duración del fade-in en ms
+  let audioFadeInterval = null;
+  let userInteracted = false; // se vuelve true tras una interacción del usuario
   const TOTAL_PHOTOS = 27; // img1.jpg .. img27.jpg
   const photos = [];
   let visibleInterval = null;
@@ -62,6 +69,10 @@ si no estás tú.</p>`
   // Abrir sobre más lento para efecto elegante
   setTimeout(()=>{
     envelope.classList.add('open');
+    // Intentar iniciar la música cuando el sobre se abra (solo se reproducirá
+    // si el usuario ya interactuó; si no, se registrará un listener para intentarlo
+    // en el próximo gesto del usuario).
+    startAudioIfAllowed();
     // Iniciar fotos tras la apertura
     setTimeout(()=>{
       startFloatingPhotos();
@@ -100,9 +111,74 @@ si no estás tú.</p>`
         try{ envelope.remove(); }catch(e){ envelope.style.display = 'none'; }
         // iniciar rotación de cartas tras liberar la carta
         startCardRotation();
+        // La carta fue liberada por interacción/animación: intentar iniciar música
+        startAudioIfAllowed();
       }, 750);
     }, 450);
   }
+
+  // ------------------ Audio controls ------------------
+  // Fade-in gradual del audio hasta AUDIO_TARGET_VOLUME
+  function fadeInAudio(){
+    if(!bgAudio) return;
+    if(audioFadeInterval) clearInterval(audioFadeInterval);
+    const stepMs = 100;
+    const steps = Math.max(1, Math.ceil(AUDIO_FADE_MS / stepMs));
+    const delta = AUDIO_TARGET_VOLUME / steps;
+    let current = parseFloat(bgAudio.volume) || 0;
+    bgAudio.volume = current;
+    audioFadeInterval = setInterval(()=>{
+      current = Math.min(AUDIO_TARGET_VOLUME, current + delta);
+      bgAudio.volume = current;
+      if(current >= AUDIO_TARGET_VOLUME){
+        clearInterval(audioFadeInterval);
+        audioFadeInterval = null;
+      }
+    }, stepMs);
+  }
+
+  // Intentar reproducir el audio, manejando bloqueo de autoplay.
+  // Si no ha ocurrido una interacción previa, se registrará un listener
+  // one-time para lanzar la reproducción con el próximo gesto del usuario.
+  function startAudioIfAllowed(){
+    if(!bgAudio) return;
+    if(bgAudio.dataset.started) return; // ya iniciado
+
+    const tryPlay = ()=>{
+      try{ bgAudio.currentTime = 0; }catch(e){}
+      bgAudio.volume = 0; // iniciar en 0 para poder hacer fade-in
+      const p = bgAudio.play();
+      if(p && typeof p.then === 'function'){
+        p.then(()=>{
+          bgAudio.dataset.started = '1';
+          fadeInAudio();
+        }).catch((err)=>{
+          // Reproducción bloqueada: esperar al próximo gesto del usuario
+          const onGesture = ()=>{
+            bgAudio.play().then(()=>{ bgAudio.dataset.started='1'; fadeInAudio(); }).catch(()=>{});
+            document.removeEventListener('pointerdown', onGesture);
+          };
+          document.addEventListener('pointerdown', onGesture, {once:true});
+        });
+      } else {
+        // navegadores antiguos
+        bgAudio.dataset.started = '1';
+        fadeInAudio();
+      }
+    };
+
+    // Si ya detectamos un gesto del usuario, intentamos reproducir ahora.
+    if(userInteracted){
+      tryPlay();
+    } else {
+      // esperar el primer gesto del usuario y entonces reproducir
+      const onFirst = ()=>{ userInteracted = true; tryPlay(); document.removeEventListener('pointerdown', onFirst); };
+      document.addEventListener('pointerdown', onFirst, {once:true});
+    }
+  }
+
+  // Marcar interacción del usuario en el primer gesto (sin iniciar reproducción automática)
+  document.addEventListener('pointerdown', ()=>{ userInteracted = true; }, {once:true});
 
   // Botón para continuar
   // botón eliminado: no hay acción necesaria
