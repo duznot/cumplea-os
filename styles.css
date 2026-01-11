@@ -1,0 +1,178 @@
+/* styles.css
+   Variables globales para colores y ajustes (fáciles de editar)
+*/
+:root{
+  --color-fondo: linear-gradient(135deg, rgba(255,240,245,0.9), rgba(255,245,250,0.9)), url('background.jpg'); /* reemplaza background.jpg */
+  --color-sobre: #ffeef8;
+  --color-carta: #e9d6ff; /* morado pastel suave */
+  --color-texto: #3b2b4b;
+  --color-boton: #c87fdc;
+  --photo-frame: #fff6f9;
+  --shadow: 0 10px 30px rgba(59,43,75,0.12);
+  --transition-slow: 1400ms cubic-bezier(.2,.8,.2,1);
+}
+
+  /* Propiedades para animación del flap y texto (experimental) */
+  @property --flap-rotation{
+    syntax: "<angle>";
+    inherits: false;
+    initial-value: 0deg;
+  }
+  @property --progress{
+    syntax: "<percentage>";
+    inherits: false;
+    initial-value: 20%;
+  }
+  @property --text{
+    syntax: "<number>";
+    inherits: false;
+    initial-value: 0.0;
+  }
+
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;font-family:'Playfair Display', Georgia, serif;color:var(--color-texto);}
+
+/* Fondo: ocupa toda la pantalla, cover. Puedes reemplazar la URL en --color-fondo */
+body{
+  background: var(--color-fondo) center/cover no-repeat fixed;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+.stage{width:100%;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:3rem}
+.center{position:relative;display:flex;flex-direction:column;align-items:center;gap:1.25rem}
+
+/* Fotos decorativas detrás de la carta */
+.photos{position:fixed;left:0;top:0;right:0;bottom:0;pointer-events:none;z-index:1}
+.photo{position:absolute;width:120px;height:90px;object-fit:cover;border-radius:8px;box-shadow:0 10px 30px rgba(0,0,0,0.14);border:8px solid var(--photo-frame);opacity:0;transform:scale(.96);transition:opacity 900ms ease, transform 900ms ease, filter 900ms ease}
+.photo.show{opacity:1;transform:scale(1);filter:drop-shadow(0 12px 18px rgba(0,0,0,0.12))}
+
+/* Sobre - estilo avanzado con flap, face y sello */
+.envelope{
+  container: envelope/ inline-size;
+  perspective: 1000px;
+  position: relative;
+  width: 60vmin;
+  aspect-ratio: 16/9;
+  --tw-bg-opacity:1;
+  background-color: var(--color-sobre);
+  --tw-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1),
+         0 8px 10px -6px rgb(0 0 0 / 0.1);
+  box-shadow: var(--tw-shadow);
+  z-index: 20;
+}
+
+.flap{ 
+   --tw-bg-opacity:1;
+   background-color: rgba(203,213,225, var(--tw-bg-opacity));
+   clip-path: polygon(100% 0%, 0 0%, 50% 100% );
+   width: 100cqw;
+   height: 30cqw;
+   transform-style: preserve-3d;
+   rotate: x var(--flap-rotation);
+   transform-origin: 50% 0;
+  animation: animate-flap ease both;
+  animation-timeline: scroll();
+  animation-range: 0 60%;
+  transition: transform var(--transition-slow), opacity 600ms ease;
+   z-index: 4;
+   position: relative;
+}
+
+.face{
+  clip-path: polygon(50% 35%, 100% 0, 100% 100%, 0 100%, 0 0);
+  --tw-bg-opacity:1;
+  background-color: rgba(241,245,249, var(--tw-bg-opacity));
+  inset: 0px;
+  position: absolute;
+  z-index: 3;
+}
+
+.heart{
+  --c: #c85a8e;
+  position: absolute;
+  width: 50cqw;
+  left: 50%;
+  top: 0;
+  transform: translateY(var(--progress));
+  animation: show-heart ease both;
+  animation-timeline: scroll();
+  animation-range: 60%;
+  margin-left: -25cqw;
+  aspect-ratio: 1/1;
+  z-index: 3;
+  background:  radial-gradient(at 70% 31%, var(--c) 29%,#0000 30%),
+         radial-gradient(at 30% 31%, var(--c) 29%, #0000 30%),
+         conic-gradient(from -45deg at 50% 84%, var(--c)90deg,#0000 0)
+         bottom/100% 50% no-repeat;
+}
+
+@keyframes animate-flap{
+  from{
+    --flap-rotation: 0deg;
+  }
+  99%{
+    z-index: 4;
+  }
+  100%{
+    --flap-rotation: 180deg;
+    z-index: 1;
+  }
+}
+
+@keyframes show-heart{
+  from{
+    --progress: 20%;
+  }
+  to{
+    --progress: -90%;
+  }
+}
+
+/* Carta (sale desde dentro) */
+
+.env-body{width:100%;height:100%;position:relative;overflow:visible;display:flex;align-items:flex-start;justify-content:center}
+.letter{position:relative;width:min(90vw,680px);max-width:90%;height:auto;transform:translateY(40%);opacity:0;transition:transform 1200ms ease, opacity 1000ms ease;z-index:30;display:flex;align-items:flex-start;justify-content:center}
+.letter .paper{background:var(--color-carta);width:100%;height:auto;max-height:75vh;border-radius:12px;padding:1rem 1.1rem;box-shadow:var(--shadow);font-style:italic;overflow:auto;box-sizing:border-box}
+.letter .paper p{margin:0 0 0.6rem;line-height:1.45;word-wrap:break-word;font-size:clamp(0.95rem,2.5vmin,1.25rem)}
+
+/* Transiciones para cambio de carta */
+.letter .paper{transition:opacity 500ms ease, transform 500ms ease}
+.letter .paper.hidden{opacity:0;transform:translateY(6px) scale(.995)}
+
+/* Cuando el sobre se abre */
+.envelope.open .flap{transform:rotateX(-180deg)}
+.envelope.open .letter{transform:translateY(-10%);opacity:1;transition:transform 1200ms ease, opacity 1000ms ease}
+
+/* Sello de cera */
+/* wax-seal removed */
+
+/* Ensure photos appear above background but below the card */
+.photos{position:fixed;left:0;top:0;right:0;bottom:0;pointer-events:none;z-index:30}
+.photo{position:absolute;width:120px;height:90px;background-size:cover;background-position:center;border-radius:8px;box-shadow:0 10px 30px rgba(0,0,0,0.14);border:8px solid var(--photo-frame);opacity:0;transform:scale(.96);transition:opacity 900ms ease, transform 900ms ease, filter 900ms ease}
+.photo.show{opacity:1;transform:scale(1);filter:drop-shadow(0 12px 18px rgba(0,0,0,0.12));z-index:35}
+
+/* Tipografías y secciones del texto */
+.large{font-family:'Dancing Script', cursive;font-size:1.6rem;margin:0 0 .4rem}
+.poema p{margin:0 0 .4rem;line-height:1.4}
+.small{font-size:.95rem;margin-top:.8rem;font-style:italic}
+
+/* Botón */
+.btn{background:linear-gradient(135deg,var(--color-boton),#b86ad0);border:none;color:white;padding:.7rem 1.2rem;border-radius:999px;cursor:pointer;box-shadow:0 6px 20px rgba(200,120,220,0.2);transition:transform 260ms ease, box-shadow 260ms ease}
+.btn:hover{transform:translateY(-4px);box-shadow:0 12px 30px rgba(200,120,220,0.28)}
+/* Ensure button stays above card and photos */
+.btn{position:relative;z-index:12}
+
+/* Responsive */
+@media (max-width:560px){
+  .envelope{width:280px;height:190px}
+  .letter{width:260px;height:150px}
+  .photos{width:300px;height:200px}
+  .photo{width:100px;height:76px}
+}
+
+/* Página 2 estilos mínimos */
+.page2-stage{min-height:100vh;display:flex;align-items:center;justify-content:center}
+.page2-content{background:rgba(255,255,255,0.85);padding:2.2rem;border-radius:12px;max-width:720px;text-align:center;box-shadow:var(--shadow)}
+.page2 .lead{font-size:1.05rem;line-height:1.6}
